@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pending Typing Fees</title>
+    <style>
+      body {
+        font-family: "Poppins", sans-serif;
+        background: #f2f4f7;
+        padding: 20px;
+        margin: 0;
+      }
+      h2 {
+        text-align: center;
+        color: #333;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+      }
+      th {
+        background: #007bff;
+        color: white;
+      }
+      tr:hover {
+        background-color: #f1f1f1;
+      }
+      #msgBox {
+        margin-top: 25px;
+        text-align: center;
+      }
+      textarea {
+        width: 60%;
+        max-width: 300px;
+        height: 100px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        resize: none;
+        font-size: 14px;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        margin-top: 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      /* Mobile: vertical card layout, no horizontal scroll */
+      @media (max-width: 768px) {
+        table {
+          display: block;
+        }
+        thead {
+          display: none;
+        }
+        tbody {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+        tr {
+          display: block;
+          background: white;
+          padding: 15px;
+          border-radius: 10px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+        td {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          text-align: left;
+          border: none;
+          border-bottom: 1px solid #eee;
+        }
+        td:last-child {
+          border-bottom: 0;
+        }
+        td::before {
+          content: attr(data-label);
+          font-weight: 600;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Typing Students with Pending Fees</h2>
+
+    <table id="studentsTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Batch</th>
+          <th>Total Fees</th>
+          <th>Paid</th>
+          <th>Pending</th>
+          <th>Gmail</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="msgBox">
+      <h3>Send Message to All Pending Students</h3>
+      <textarea id="messageText" placeholder="Type your message..."></textarea
+      ><br />
+      <button id="sendMsgBtn">Send Message</button>
+    </div>
+
+    <script>
+      async function loadPendingStudents() {
+        const res = await fetch("/get-pending-typing-fees");
+        const students = await res.json();
+        const tbody = document.querySelector("#studentsTable tbody");
+        tbody.innerHTML = "";
+
+        students.forEach((s) => {
+          const pending = s.total_fees - s.fees_paid;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td data-label="Name">${s.name}</td>
+            <td data-label="Batch">${s.batch}</td>
+            <td data-label="Total Fees">${s.total_fees}</td>
+            <td data-label="Paid">${s.fees_paid}</td>
+            <td data-label="Pending">${pending}</td>
+            <td data-label="Gmail">${s.gmail}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      document
+        .getElementById("sendMsgBtn")
+        .addEventListener("click", async () => {
+          const msg = document.getElementById("messageText").value;
+          if (!msg.trim()) return alert("Please enter a message!");
+          const res = await fetch("/send-typing-fee-msg", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: msg }),
+          });
+          const result = await res.text();
+          alert(result);
+        });
+
+      loadPendingStudents();
+    </script>
+  </body>
+</html>

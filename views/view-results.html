@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Results</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f8f9fa;
+        padding: 20px;
+      }
+      h2 {
+        text-align: center;
+        color: #333;
+      }
+      .popup {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        overflow-y: auto;
+        max-height: 80vh;
+      }
+      .result-item {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+        background: #fefefe;
+      }
+      .result-item:hover {
+        background: #f1f1f1;
+      }
+      button {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+        float: right;
+      }
+      button:hover {
+        background: #a71d2a;
+      }
+      .info {
+        font-size: 14px;
+        color: #444;
+      }
+      .marks {
+        color: green;
+        font-weight: bold;
+      }
+      @media (max-width: 600px) {
+        .popup {
+          width: 95%;
+          padding: 10px;
+        }
+        .result-item {
+          font-size: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Student Test Results</h2>
+
+    <div class="popup">
+      <div id="resultsContainer"></div>
+    </div>
+
+    <button id="sendAllBtn" onclick="sendAllResults()">
+      Send Results by Mail
+    </button>
+
+    <script>
+      function loadResults() {
+        fetch("/api/get-results")
+          .then((res) => res.json())
+          .then((results) => {
+            const container = document.getElementById("resultsContainer");
+            container.innerHTML = "";
+
+            if (results.length === 0) {
+              container.innerHTML = "<p>No results found.</p>";
+              return;
+            }
+
+            results.forEach((r) => {
+              const div = document.createElement("div");
+              div.className = "result-item";
+              div.innerHTML = `
+              <div class="info">
+                <b>Test:</b> ${r.test_name} <br>
+                <b>Name:</b> ${r.name} <br>
+                <b>Course:</b> ${r.course} <br>
+                <b>Email:</b> ${r.email} <br>
+                <b>Marks:</b> <span class="marks">${r.total_marks}</span> <br>
+                <small>Submitted: ${new Date(
+                  r.submitted_at
+                ).toLocaleString()}</small>
+              </div>
+              <button onclick="deleteResult(${r.id})">Delete</button>
+            `;
+              container.appendChild(div);
+            });
+          });
+      }
+
+      //send result into student by email through
+      async function sendAllResults() {
+        if (!confirm("Send all results to students by email?")) return;
+        const res = await fetch("/api/send-all-results", { method: "POST" });
+        const msg = await res.text();
+        alert(msg);
+      }
+
+      async function deleteResult(id) {
+        if (!confirm("Delete this result?")) return;
+        const res = await fetch(`/api/delete-result/${id}`, {
+          method: "DELETE",
+        });
+        const msg = await res.text();
+        alert(msg);
+        loadResults();
+      }
+
+      loadResults();
+    </script>
+  </body>
+</html>

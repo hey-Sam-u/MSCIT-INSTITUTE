@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Add Student</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container auth-container">
+      <h2>Add Student</h2>
+
+      <form id="studentForm" enctype="multipart/form-data">
+        <input
+          type="text"
+          name="student_name"
+          placeholder="Full Name"
+          required
+        />
+        <select name="gender" required>
+          <option value="">Select Gender</option>
+          <option>Male</option>
+          <option>Female</option>
+          <option>Other</option>
+        </select>
+        <p style="margin: 0">Enter Date-Of-Birth</p>
+        <input type="date" name="dob" required />
+        <input
+          type="text"
+          name="contact_number"
+          placeholder="Contact Number"
+          required
+        />
+        <textarea name="address" placeholder="Address" required></textarea>
+        <p style="margin: 0">Enter Addmission Date</p>
+        <input type="date" name="admission_date" required />
+        <input
+          type="number"
+          name="total_fees"
+          placeholder="Total Fees"
+          required
+        />
+        <input
+          type="number"
+          name="fees_paid"
+          placeholder="Fees Paid"
+          required
+        />
+        <input type="file" name="photo" accept="image/*" />
+        <button type="submit">Submit</button>
+      </form>
+
+      <div id="msg" class="msg"></div>
+    </div>
+
+    <script src="/add_student.js"></script>
+  </body>
+</html>

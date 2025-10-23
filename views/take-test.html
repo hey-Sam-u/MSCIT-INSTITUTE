@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Take Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 10px;
+        background: #f9f9f9;
+      }
+      h2 {
+        text-align: center;
+      }
+      form {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px;
+        width: 100%;
+        border-radius: 6px;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .question {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      label {
+        display: block;
+        margin: 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Take Test</h2>
+
+    <form id="studentForm">
+      <input
+        type="text"
+        id="studentName"
+        placeholder="Enter your name"
+        required
+      />
+      <input
+        type="text"
+        id="studentCourse"
+        placeholder="Enter your course"
+        required
+      />
+      <input
+        type="email"
+        id="studentEmail"
+        placeholder="Enter your email"
+        required
+      />
+      <button type="submit">Start Test</button>
+    </form>
+
+    <div id="testContainer" style="display: none"></div>
+
+    <!-- Timer Display (corner me) -->
+    <div
+      id="timer"
+      style="
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: #f0f0f0;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        z-index: 9999;
+      "
+    >
+      Time Left: 60:00
+    </div>
+
+    <script>
+      const testId = window.location.pathname.split("/").pop();
+      let questionsData = [];
+
+      const studentEmailInput = document.getElementById("studentEmail");
+
+      // 🔒 Single-attempt check
+      async function checkAttempt() {
+        const email = studentEmailInput.value;
+        if (!email) return false;
+
+        const res = await fetch(
+          `/api/check-attempt?test_id=${testId}&email=${email}`
+        );
+        const data = await res.json();
+        if (data.attempted) {
+          alert(
+            "You have already attempted this test. You cannot take it again."
+          );
+          // Freeze page instead of redirect
+          document.body.innerHTML = `
+        <div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column">
+          <h2 style="color:red;">Test Already Attempted ❌</h2>
+          <p>You cannot retake this test.</p>
+        </div>`;
+          // Block all key presses
+          document.onkeydown = (e) => e.preventDefault();
+          return true; // blocked
+        }
+        return false;
+      }
+
+      document
+        .getElementById("studentForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const blocked = await checkAttempt();
+          if (blocked) return;
+
+          document.getElementById("studentForm").style.display = "none";
+          loadQuestions();
+        });
+
+      function loadQuestions() {
+        fetch(`/get-test-questions/${testId}`)
+          .then((res) => res.json())
+          .then((questions) => {
+            questionsData = questions;
+            const container = document.getElementById("testContainer");
+            container.style.display = "block";
+            container.innerHTML = "";
+
+            questions.forEach((q, i) => {
+              const div = document.createElement("div");
+              div.className = "question";
+              div.innerHTML = `
+            <p><b>Q${i + 1}.</b> ${q.question_text}</p>
+            <label><input type="radio" name="q${q.id}" value="A" /> ${
+                q.option_a
+              }</label>
+            <label><input type="radio" name="q${q.id}" value="B" /> ${
+                q.option_b
+              }</label>
+            <label><input type="radio" name="q${q.id}" value="C" /> ${
+                q.option_c
+              }</label>
+            <label><input type="radio" name="q${q.id}" value="D" /> ${
+                q.option_d
+              }</label>
+          `;
+              container.appendChild(div);
+            });
+
+            const btn = document.createElement("button");
+            btn.textContent = "Submit Test";
+            btn.onclick = submitTest;
+            container.appendChild(btn);
+          });
+      }
+
+      async function submitTest() {
+        const answers = {};
+        questionsData.forEach((q) => {
+          const selected = document.querySelector(
+            `input[name='q${q.id}']:checked`
+          );
+          if (selected) answers[q.id] = selected.value;
+        });
+
+        const payload = {
+          test_id: testId,
+          name: document.getElementById("studentName").value,
+          course: document.getElementById("studentCourse").value,
+          email: studentEmailInput.value,
+          answers: answers,
+        };
+
+        const res = await fetch("/api/submit-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        alert(`Test submitted! You scored ${data.total} marks.`);
+
+        // Freeze page after submit
+        document.body.innerHTML = `
+      <div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column">
+        <h2 style="color:green;">Test Submitted Successfully ✅</h2>
+        <p>Your score: ${data.total}</p>
+        <p>You cannot navigate away or retake this test.</p>
+      </div>`;
+        document.onkeydown = (e) => e.preventDefault();
+        clearInterval(timerInterval);
+        clearInterval(intervalId);
+      }
+
+      // 🔒 Disable back button
+      history.pushState(null, null, location.href);
+      window.onpopstate = () => history.go(1);
+
+      // 🔒 Disable refresh
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "F5" || (e.ctrlKey && e.key === "r")) {
+          e.preventDefault();
+          alert("Refresh is disabled during test.");
+        }
+      });
+
+      // 🔒 Disable right-click + copy-paste
+      document.addEventListener("contextmenu", (e) => e.preventDefault());
+      document.addEventListener("copy", (e) => e.preventDefault());
+      document.addEventListener("cut", (e) => e.preventDefault());
+      document.addEventListener("paste", (e) => e.preventDefault());
+
+      // 🔒 Fullscreen
+      function openFullscreen() {
+        let elem = document.documentElement;
+        if (elem.requestFullscreen) elem.requestFullscreen();
+        else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+        else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+      }
+      openFullscreen();
+
+      // Anti-cheating
+      let blurTimer,
+        countdown = 120,
+        intervalId,
+        minimizeCount = 0;
+      function blurPage() {
+        minimizeCount++;
+        if (minimizeCount >= 3) {
+          alert("You minimized 3 times! Test auto-submitted.");
+          submitTest();
+          return;
+        }
+
+        const overlay = document.createElement("div");
+        overlay.id = "blurOverlay";
+        overlay.style.cssText =
+          "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.95);backdrop-filter:blur(10px);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center";
+        overlay.innerHTML = `<h2 style="font-size:22px;">Page Minimized Detected ❗</h2>
+      <p id="timerDisplay" style="font-size:20px;margin-top:10px;">Please wait 120s</p>`;
+        document.body.appendChild(overlay);
+
+        countdown = 120;
+        intervalId = setInterval(() => {
+          countdown--;
+          document.getElementById(
+            "timerDisplay"
+          ).innerText = `Please wait ${countdown}s`;
+          if (countdown <= 0) {
+            clearInterval(intervalId);
+            const blurOverlay = document.getElementById("blurOverlay");
+            if (blurOverlay) document.body.removeChild(blurOverlay);
+            countdown = 120;
+          }
+        }, 1000);
+      }
+
+      function handleVisibilityChange() {
+        if (document.hidden) blurTimer = setTimeout(blurPage, 300);
+        else clearTimeout(blurTimer);
+      }
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+
+      // Timer for 60 minutes
+      let totalSeconds = 60 * 60;
+      const timerEl = document.getElementById("timer");
+      function updateTimerDisplay() {
+        let minutes = Math.floor(totalSeconds / 60);
+        let seconds = totalSeconds % 60;
+        timerEl.textContent = `Time Left: ${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      }
+      const timerInterval = setInterval(() => {
+        totalSeconds--;
+        updateTimerDisplay();
+        if (totalSeconds <= 0) {
+          clearInterval(timerInterval);
+          alert("Time is up! Your test will be submitted automatically.");
+          submitTest();
+        }
+      }, 1000);
+      updateTimerDisplay();
+    </script>
+  </body>
+</html>

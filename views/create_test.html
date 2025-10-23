@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      input,
+      select,
+      textarea,
+      button {
+        padding: 10px;
+        margin: 5px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .question-block {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin: 10px 0;
+      }
+      .add-btn,
+      .finish-btn {
+        background: #4caf50;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      .add-btn:hover,
+      .finish-btn:hover {
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Create Test</h2>
+
+    <input type="text" id="test_name" placeholder="Enter Test Name" required />
+    <input
+      type="text"
+      id="course_name"
+      placeholder="Enter Course Name"
+      required
+    />
+
+    <div id="questions_container"></div>
+
+    <button class="add-btn" onclick="addQuestion()">Add Question</button>
+    <button class="finish-btn" onclick="submitTest()">Finish Test</button>
+
+    <script>
+      let questionCount = 0;
+      let questions = [];
+
+      function addQuestion() {
+        questionCount++;
+        const qDiv = document.createElement("div");
+        qDiv.className = "question-block";
+        qDiv.id = "question_" + questionCount;
+        qDiv.innerHTML = `
+        <h4>Question ${questionCount}</h4>
+        <textarea placeholder="Enter Question Text" required></textarea>
+        <input type="number" placeholder="Marks" required>
+        <input type="text" placeholder="Option A" required>
+        <input type="text" placeholder="Option B" required>
+        <input type="text" placeholder="Option C" required>
+        <input type="text" placeholder="Option D" required>
+        <select required>
+            <option value="">Select Correct Option</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+        </select>
+    `;
+        document.getElementById("questions_container").appendChild(qDiv);
+      }
+
+      function submitTest() {
+        const test_name = document.getElementById("test_name").value.trim();
+        const course_name = document.getElementById("course_name").value.trim();
+        if (!test_name || !course_name) {
+          alert("Test name and course required");
+          return;
+        }
+
+        const qBlocks = document.querySelectorAll(".question-block");
+        if (qBlocks.length === 0) {
+          alert("Add at least one question");
+          return;
+        }
+
+        const questionsData = [];
+        for (let q of qBlocks) {
+          const t = q.querySelector("textarea").value.trim();
+          const marks = parseInt(q.querySelector("input[type='number']").value);
+          const options = q.querySelectorAll("input[type='text']");
+          const correct = q.querySelector("select").value;
+          if (
+            !t ||
+            !marks ||
+            !options[0].value ||
+            !options[1].value ||
+            !options[2].value ||
+            !options[3].value ||
+            !correct
+          ) {
+            alert("Fill all fields for all questions");
+            return;
+          }
+          questionsData.push({
+            question_text: t,
+            marks: marks,
+            option_a: options[0].value,
+            option_b: options[1].value,
+            option_c: options[2].value,
+            option_d: options[3].value,
+            correct_option: correct,
+          });
+        }
+
+        fetch("/save-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            test_name,
+            course_name,
+            questions: questionsData,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.error) alert(data.error);
+            else alert(data.message);
+            location.reload();
+          })
+          .catch((err) => alert(err));
+      }
+    </script>
+  </body>
+</html>

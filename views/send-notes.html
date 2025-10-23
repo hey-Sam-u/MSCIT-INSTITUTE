@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Send Notes</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      .container {
+        max-width: 500px;
+        margin: auto;
+        background: #f9f9f9;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+      h2 {
+        text-align: center;
+      }
+      select,
+      input[type="file"] {
+        width: 100%;
+        margin: 10px 0;
+        padding: 10px;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        background: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      #filePreview img {
+        max-width: 100%;
+        height: auto;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Send Notes to Students</h2>
+      <select id="courseSelect">
+        <option value="">Select Course</option>
+      </select>
+      <input type="file" id="noteFile" accept=".pdf,image/*" />
+      <div id="filePreview"></div>
+      <button id="sendNotesBtn">Send All</button>
+    </div>
+
+    <script>
+      const courseSelect = document.getElementById("courseSelect");
+      const noteFile = document.getElementById("noteFile");
+      const filePreview = document.getElementById("filePreview");
+      const sendBtn = document.getElementById("sendNotesBtn");
+
+      // Load courses
+      fetch("/getCourses")
+        .then((res) => res.json())
+        .then((courses) => {
+          courses.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = c.name + " (" + c.batch + ")";
+            courseSelect.appendChild(opt);
+          });
+        });
+
+      // File preview
+      noteFile.addEventListener("change", () => {
+        const file = noteFile.files[0];
+        if (!file) return;
+        if (file.type.startsWith("image/")) {
+          filePreview.innerHTML = `<img src="${URL.createObjectURL(file)}" />`;
+        } else if (file.type === "application/pdf") {
+          filePreview.innerHTML = `<p>PDF selected: ${file.name}</p>`;
+        } else {
+          filePreview.innerHTML = `<p>Unsupported file</p>`;
+        }
+      });
+
+      // Send notes
+      sendBtn.addEventListener("click", () => {
+        const courseId = courseSelect.value;
+        const file = noteFile.files[0];
+        if (!courseId || !file) return alert("Select course and file!");
+
+        const formData = new FormData();
+        formData.append("course_id", courseId);
+        formData.append("file", file);
+
+        fetch("/send-course-notes", { method: "POST", body: formData })
+          .then((res) => res.text())
+          .then((msg) => alert(msg))
+          .catch((err) => alert("Error: " + err.message));
+      });
+    </script>
+  </body>
+</html>

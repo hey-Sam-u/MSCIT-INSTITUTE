@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Typing Students</title>
+    <style>
+      body {
+        font-family: "Poppins", sans-serif;
+        background: #f4f6f9;
+        padding: 20px;
+        margin: 0;
+      }
+      h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 15px;
+      }
+      .search-box {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      input {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        width: 60%;
+        max-width: 300px;
+      }
+      .table-container {
+        background: white;
+        border-radius: 10px;
+        padding: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: center;
+        font-size: 14px;
+        word-wrap: break-word;
+      }
+      th {
+        background-color: #007bff;
+        color: white;
+      }
+      button {
+        padding: 5px 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        margin: 2px 0;
+      }
+      .edit-btn {
+        background: #ffc107;
+        color: #000;
+      }
+      .delete-btn {
+        background: #dc3545;
+        color: white;
+      }
+      .back-btn {
+        display: inline-block;
+        margin-top: 20px;
+        text-decoration: none;
+        color: #007bff;
+      }
+
+      /* Mobile: vertical cards, no horizontal scroll */
+      @media (max-width: 768px) {
+        table,
+        thead,
+        tbody,
+        th,
+        td,
+        tr {
+          display: block;
+          width: 100%;
+        }
+        thead tr {
+          display: none;
+        }
+        tbody {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+        tr {
+          background: #fff;
+          padding: 15px;
+          border-radius: 10px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+        td {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          border: none;
+          border-bottom: 1px solid #eee;
+          text-align: left;
+        }
+        td:last-child {
+          border-bottom: 0;
+        }
+        td::before {
+          content: attr(data-label);
+          font-weight: 600;
+          width: 40%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Typing Students List</h2>
+
+    <div class="search-box">
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search by name, batch, or contact..."
+      />
+    </div>
+
+    <div class="table-container">
+      <table id="studentsTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Photo</th>
+            <th>Name</th>
+            <th>Batch</th>
+            <th>Contact</th>
+            <th>Fees Paid</th>
+            <th>Total Fees</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+    <div id="editFormContainer" style="margin-top: 20px"></div>
+
+    <script>
+      async function loadStudents() {
+        const res = await fetch("/getTypingStudents");
+        const data = await res.json();
+        const tbody = document.querySelector("#studentsTable tbody");
+        tbody.innerHTML = "";
+
+        data.forEach((student) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td data-label="ID">${student.id}</td>
+            <td data-label="Photo">
+              <img src="/uploads/${
+                student.photo || "default.jpg"
+              }" width="50" height="50" style="border-radius:5px">
+            </td>
+            <td data-label="Name">${student.name}</td>
+            <td data-label="Batch">${student.batch}</td>
+            <td data-label="Contact">${student.contact}</td>
+            <td data-label="Fees Paid">${student.fees_paid}</td>
+            <td data-label="Total Fees">${student.total_fees}</td>
+            <td data-label="Actions">
+              <button class="edit-btn" onclick="editStudent(${
+                student.id
+              })">Edit</button>
+              <button class="delete-btn" onclick="deleteStudent(${
+                student.id
+              })">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      async function deleteStudent(id) {
+        if (confirm("Are you sure you want to delete this student?")) {
+          const res = await fetch(`/deleteTypingStudent/${id}`, {
+            method: "DELETE",
+          });
+          const msg = await res.text();
+          alert(msg);
+          loadStudents();
+        }
+      }
+
+      async function editStudent(id) {
+        const response = await fetch(`/get-typing-student/${id}`);
+        const student = await response.json();
+        const container = document.getElementById("editFormContainer");
+
+        container.innerHTML = `
+          <h3>Edit Student</h3>
+          <form id="editForm">
+            <input type="hidden" name="id" value="${student.id}">
+            <input type="text" name="name" value="${student.name}" required />
+            <input type="text" name="contact" value="${student.contact}" required />
+            <input type="email" name="gmail" value="${student.gmail}" required />
+            <input type="text" name="batch" value="${student.batch}" required />
+            <input type="number" name="fees_paid" value="${student.fees_paid}" required />
+            <button type="submit">Save Changes</button>
+          </form>
+        `;
+
+        document
+          .getElementById("editForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const update = await fetch("/update-typing-student", {
+              method: "POST",
+              body: formData,
+            });
+            const result = await update.text();
+            alert(result);
+            container.innerHTML = "";
+            loadStudents();
+          });
+      }
+
+      document.getElementById("searchInput").addEventListener("keyup", () => {
+        const filter = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+        document.querySelectorAll("#studentsTable tbody tr").forEach((row) => {
+          row.style.display = row.innerText.toLowerCase().includes(filter)
+            ? ""
+            : "none";
+        });
+      });
+
+      loadStudents();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+node_modules/
+*.log
+.DS_Store
+.env
+
+.git
+bfg-*.jar
+INSTITUTE-backup.git/
+INSTITUTE-mirror.git.bfg-report/
+uploads/
+videos/

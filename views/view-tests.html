@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All Tests</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      .test-item {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin: 10px 0;
+        cursor: pointer;
+      }
+      .test-item:hover {
+        background: #f0f0f0;
+      }
+      .question-list {
+        margin-left: 20px;
+        border-left: 2px solid #ccc;
+        padding-left: 10px;
+        margin-top: 5px;
+      }
+
+      .test-item {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        background: #f9f9f9;
+      }
+      button {
+        margin-right: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>All Tests</h2>
+    <div id="tests_container"></div>
+
+    <script>
+      async function loadTests() {
+        const res = await fetch("/get-tests");
+        const tests = await res.json();
+
+        const container = document.getElementById("tests_container");
+        container.innerHTML = "";
+
+        tests.forEach((test) => {
+          const div = document.createElement("div");
+          div.className = "test-item";
+
+          div.innerHTML = `
+      <strong>${test.test_name}</strong> (${test.course_name})
+      <br>
+      <button onclick="toggleQuestions(${test.id}, this.parentElement)">View Questions</button>
+      <button onclick="copyLink(${test.id})">Copy Link</button>
+      <button onclick="deleteTest(${test.id})" style="background:#dc3545;">Delete Test</button>
+      <div id="link-${test.id}" class="link-msg" style="display:none; color:green; margin-top:4px;">
+        ✅ Link copied!
+      </div>
+    `;
+
+          container.appendChild(div);
+        });
+      }
+
+      function toggleQuestions(test_id, div) {
+        const existing = div.querySelector(".question-list");
+        if (existing) {
+          existing.remove();
+          return;
+        }
+
+        fetch(`/get-test-questions/${test_id}`)
+          .then((res) => res.json())
+          .then((questions) => {
+            const qDiv = document.createElement("div");
+            qDiv.className = "question-list";
+            questions.forEach((q, idx) => {
+              qDiv.innerHTML += `
+          <p>${idx + 1}. ${q.question_text} [${q.marks} Marks]<br>
+          A) ${q.option_a}<br>
+          B) ${q.option_b}<br>
+          C) ${q.option_c}<br>
+          D) ${q.option_d}<br>
+          ✅ Correct: ${q.correct_option}</p>
+          <hr>`;
+            });
+            div.appendChild(qDiv);
+          });
+      }
+
+      async function copyLink(testId) {
+        const link = window.location.origin + "/take-test/" + testId;
+        await navigator.clipboard.writeText(link);
+        const msgDiv = document.getElementById(`link-${testId}`);
+        msgDiv.style.display = "block";
+        setTimeout(() => (msgDiv.style.display = "none"), 2000);
+      }
+
+      async function deleteTest(id) {
+        if (!confirm("Are you sure you want to delete this test?")) return;
+        const res = await fetch(`/api/delete-test/${id}`, { method: "DELETE" });
+        const msg = await res.text();
+        alert(msg);
+        loadTests();
+      }
+
+      window.onload = loadTests;
+    </script>
+  </body>
+</html>
