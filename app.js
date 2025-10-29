@@ -20,16 +20,23 @@ app.set("view engine", "ejs"); // optional if you want dynamic HTML later
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // MySQL connection
-const db = mysql.createConnection({
+const db = mysql.createPool({
+  connectionLimit: 5,
   host: process.env.MYSQL_ADDON_HOST,
   user: process.env.MYSQL_ADDON_USER,
   password: process.env.MYSQL_ADDON_PASSWORD,
   database: process.env.MYSQL_ADDON_DB,
 });
-db.connect((err) => {
-  if (err) console.log("DB Error:", err);
-  else console.log("DB Connected");
+
+db.getConnection((err, connection) => {
+  if (err) {
+    console.log("DB Error:", err);
+  } else {
+    console.log("DB Connected(using pool)");
+    connection.release();
+  }
 });
+module.exports = db;
 
 // In-memory OTP store (for testing)
 let otpStore = {}; // { email: { otp: 123456, expires: timestamp } }
@@ -100,7 +107,10 @@ app.post(
         if (err) return res.status(500).json({ error: err.message });
 
         // Fake OTP logic (no email sending)
-        otpStore[admin_email] = { otp: 123456, expires: Date.now() + 10 * 60000 };
+        otpStore[admin_email] = {
+          otp: 123456,
+          expires: Date.now() + 10 * 60000,
+        };
 
         res.json({
           message:
@@ -110,7 +120,6 @@ app.post(
     );
   }
 );
-
 
 // Verify OTP (FAKE)
 app.post("/verify-otp", (req, res) => {
@@ -1118,7 +1127,6 @@ app.put("/api/exam-student/:id", (req, res) => {
     }
     res.json({ success: true });
   });
-   
 });
 
 // API: Delete student
@@ -1135,6 +1143,6 @@ app.delete("/api/exam-student/:id", (req, res) => {
 //   console.log(`Server running on port ${process.env.PORT}`)
 // );
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, ()=>{
+app.listen(PORT, () => {
   console.log(`server running on port ${PORT}`);
 });
